@@ -173,22 +173,35 @@ export class WsHandler {
         }
 
         if (message) {
-            if (message.event === 'pusher:ping') {
-                this.handlePong(ws);
-            } else if (message.event === 'pusher:subscribe') {
-                this.subscribeToChannel(ws, message);
-            } else if (message.event === 'pusher:unsubscribe') {
-                this.unsubscribeFromChannel(ws, message.data.channel);
-            } else if (Utils.isClientEvent(message.event)) {
-                this.handleClientEvent(ws, message);
-            } else if (message.event === 'pusher:signin') {
-                this.handleSignin(ws, message);
-            } else {
-                Log.warning({
-                    info: 'Message event handler not implemented.',
-                    message,
-                });
+
+            switch (message) {
+                case "ksguard:get_id":
+                    this.sendSocketID(ws);
+                    break;
+
+                case "pusher:ping":
+                    this.handlePong(ws);
+                    break;
+
+                case "pusher:subscribe":
+                    this.subscribeToChannel(ws, message);
+                    break;
+
+                case "pusher:unsubscribe":
+                    this.unsubscribeFromChannel(ws, message.data.channel);
+                    break;
+
+                case "pusher:signin":
+                    this.handleSignin(ws, message);
+                    break;
+
+                default:
+                    Log.warning({
+                        info: 'Message event handler not implemented.',
+                        message,
+                    });
             }
+
         }
 
         if (ws.app) {
@@ -285,13 +298,36 @@ export class WsHandler {
     }
 
     /**
+     * send back the socket id
+     */
+    sendSocketID(ws: WebSocket): any {
+        ws.sendJson({
+            event: 'ksguard:collectid',
+            socket_id: ws.id,
+        });
+
+        if (this.server.closing) {
+            ws.sendJson({
+                event: 'pusher:error',
+                data: {
+                    code: 4200,
+                    message: 'Server closed. Please reconnect shortly.',
+                },
+            });
+
+            ws.end(4200);
+
+            this.evictSocketFromMemory(ws);
+        }
+    }
+
+    /**
      * Send back the pong response.
      */
     handlePong(ws: WebSocket): any {
-        let socketID = ws.id;
         ws.sendJson({
-            event: 'pusher:pongg',
-            socket_id: socketID,
+            event: 'pusher:pong',
+            socket_id: ws.id,
         });
 
         if (this.server.closing) {
