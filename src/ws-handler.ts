@@ -174,6 +174,10 @@ export class WsHandler {
 
         if (message) {
 
+            if (!ws.user && message.event !== "pusher:signin") {
+                this.unauthorized(ws);
+            }
+
             switch (message.event) {
                 case "ksguard:get_id":
                     this.sendSocketID(ws);
@@ -202,6 +206,8 @@ export class WsHandler {
                     });
             }
 
+        } else {
+            this.unauthorized(ws);
         }
 
         if (ws.app) {
@@ -297,6 +303,24 @@ export class WsHandler {
         );
     }
 
+    unauthorized(ws: WebSocket): any {
+        ws.sendJson({
+            event: 'pusher:error',
+            data: {
+                code: 4009,
+                message: 'Connection not authorized.',
+            },
+        });
+
+        try {
+            ws.end(4009);
+        } catch (e) {
+            //
+        }
+
+        return;
+    }
+
     /**
      * send back the socket id
      */
@@ -327,7 +351,7 @@ export class WsHandler {
     handlePong(ws: WebSocket): any {
         ws.sendJson({
             event: 'pusher:pong',
-            socket_id: ws.id,
+            data: [],
         });
 
         if (this.server.closing) {
