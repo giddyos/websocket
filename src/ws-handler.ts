@@ -291,7 +291,7 @@ export class WsHandler {
     handlePong(ws: WebSocket): any {
         ws.sendJson({
             event: 'pusher:pongg',
-            data: {id: ws.id},
+            data: {id: ws},
         });
 
         if (this.server.closing) {
