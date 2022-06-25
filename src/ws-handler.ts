@@ -175,7 +175,7 @@ export class WsHandler {
         if (message) {
 
             if (!ws.user && message.event !== "pusher:signin") {
-                this.unauthorized(ws);
+                return this.unauthorized(ws);
             }
 
             switch (message.event) {
@@ -207,7 +207,7 @@ export class WsHandler {
             }
 
         } else {
-            this.unauthorized(ws);
+           return this.unauthorized(ws);
         }
 
         if (ws.app) {
@@ -314,9 +314,11 @@ export class WsHandler {
 
         try {
             ws.end(4009);
+            this.evictSocketFromMemory(ws);
         } catch (e) {
             //
         }
+
 
         return;
     }
@@ -389,7 +391,7 @@ export class WsHandler {
             return;
         }
 
-        let channel = message.data.channel;
+        let channel = message.data.channel!;
         let channelManager = this.getChannelManagerFor(channel);
 
         if (channel.length > ws.app.maxChannelNameLength) {
@@ -588,7 +590,7 @@ export class WsHandler {
 
         return Promise.all([
             async.each(ws.subscribedChannels, (channel, callback) => {
-                this.unsubscribeFromChannel(ws, channel, closing).then(() => callback());
+                this.unsubscribeFromChannel(ws, channel!, closing).then(() => callback());
             }),
             ws.app && ws.user ? this.server.adapter.removeUser(ws) : new Promise<void>(resolve => resolve()),
         ]).then(() => {
@@ -711,7 +713,7 @@ export class WsHandler {
                 return;
             }
 
-            let decodedUser = JSON.parse(message.data.user_data);
+            let decodedUser = JSON.parse(message.data.user_data!);
 
             if (!decodedUser.id) {
                 ws.sendJson({
