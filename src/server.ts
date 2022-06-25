@@ -381,7 +381,7 @@ export class Server {
                                 server.listen('0.0.0.0', this.options.port, serverProcess => {
                                     this.serverProcess = serverProcess;
 
-                                    Log.successTitle('🎉 Server is up and running!!!');
+                                    Log.successTitle('🎉 Server is up and running! v.0.01');
                                     Log.successTitle(`📡 The Websockets server is available at 127.0.0.1:${this.options.port}`);
                                     Log.successTitle(`🔗 The HTTP API server is available at http://127.0.0.1:${this.options.port}`);
                                     Log.successTitle(`🎊 The /usage endpoint is available on port ${this.options.metrics.port}........`);
