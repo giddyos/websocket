@@ -174,7 +174,7 @@ export class WsHandler {
 
         if (message) {
 
-            switch (message) {
+            switch (message.event) {
                 case "ksguard:get_id":
                     this.sendSocketID(ws);
                     break;
