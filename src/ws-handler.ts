@@ -695,7 +695,25 @@ export class WsHandler {
             return;
         }
 
-        this.signinTokenIsValid(ws, message.data.user_data!, message.data.auth!).then(isValid => {
+        if (!message.data.user_data || !message.data.auth) {
+            ws.sendJson({
+                event: 'pusher:error',
+                data: {
+                    code: 4009,
+                    message: 'You missing "user_data" or "auth" field.',
+                },
+            });
+
+            try {
+                ws.end(4009);
+            } catch (e) {
+                //
+            }
+
+            return;
+        }
+
+        this.signinTokenIsValid(ws, message.data.user_data, message.data.auth!).then(isValid => {
             if (!isValid) {
                 ws.sendJson({
                     event: 'pusher:error',
@@ -714,7 +732,7 @@ export class WsHandler {
                 return;
             }
 
-            let decodedUser = JSON.parse(message.data.user_data!);
+            let decodedUser = JSON.parse(message.data.user_data);
 
             if (!decodedUser.id) {
                 ws.sendJson({
