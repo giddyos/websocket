@@ -176,10 +176,6 @@ export class WsHandler {
 
             if (!ws.user && message.event !== "pusher:signin") {
                 return this.unauthorized(ws);
-            } 
-            
-            if (message.event.startsWith('client-')) {
-                this.handleClientEvent(ws, message);
             }
 
             switch (message.event) {
@@ -187,8 +183,8 @@ export class WsHandler {
                     this.sendSocketID(ws);
                     break;
 
-                case "pusher:ping":
-                    this.handlePong(ws);
+                case "ksguard:auth":
+                    this.handleAuthCheck(ws, message);
                     break;
 
                 case "pusher:subscribe":
@@ -196,7 +192,7 @@ export class WsHandler {
                     break;
 
                 case "pusher:unsubscribe":
-                    if(message.data && message.data.channel) {
+                    if (message.data && message.data.channel) {
                         this.unsubscribeFromChannel(ws, message.data.channel);
                     }
                     break;
@@ -213,8 +209,8 @@ export class WsHandler {
             }
 
         } else {
-            
-           return this.unauthorized(ws);
+
+            return this.unauthorized(ws);
         }
 
         if (ws.app) {
@@ -608,35 +604,8 @@ export class WsHandler {
     /**
      * Handle the events coming from the client.
      */
-    handleClientEvent(ws: WebSocket, message: PusherMessage): any {
+     handleAuthCheck(ws: WebSocket, message: PusherMessage): any {
         let { event, data, channel } = message;
-
-        if (!ws.app.enableClientMessages) {
-            return ws.sendJson({
-                event: 'pusher:error',
-                channel,
-                data: {
-                    code: 4301,
-                    message: `The app does not have client messaging enabled.`,
-                },
-            });
-        }
-
-        // Make sure the event name length is not too big.
-        if (event.length > ws.app.maxEventNameLength) {
-            let broadcastMessage = {
-                event: 'pusher:error',
-                channel,
-                data: {
-                    code: 4301,
-                    message: `Event name is too long. Maximum allowed size is ${ws.app.maxEventNameLength}.`,
-                },
-            };
-
-            ws.sendJson(broadcastMessage);
-
-            return;
-        }
 
         let payloadSizeInKb = Utils.dataToKilobytes(message.data);
 
