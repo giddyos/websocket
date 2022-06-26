@@ -700,7 +700,7 @@ export class WsHandler {
                 event: 'pusher:error',
                 data: {
                     code: 4009,
-                    message: 'You missing "user_data" or "auth" field.',
+                    message: "Connection not authorized.",
                 },
             });
 
