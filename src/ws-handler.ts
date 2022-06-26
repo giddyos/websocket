@@ -657,16 +657,7 @@ export class WsHandler {
 
             this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
                 if (response.canContinue) {
-                    let userId = ws.presence.has(channel) ? ws.presence.get(channel).user_id : null;
-
-                    let message = JSON.stringify({
-                        event,
-                        channel,
-                        data,
-                        ...userId ? { user_id: userId } : {},
-                    });
-
-                    this.server.adapter.send(ws.app.id, channel, message, ws.id);
+                    let userId = ws.user ? ws.user : ws.user.id;
 
                     this.server.webhookSender.sendClientEvent(
                         ws.app, channel, event, data, ws.id, userId,
@@ -695,7 +686,7 @@ export class WsHandler {
             return;
         }
 
-        if (!message.data.user_data || !message.data.auth) {
+        if (message.data.user_data == null || message.data.auth == null) {
             ws.sendJson({
                 event: 'pusher:error',
                 data: {
