@@ -176,7 +176,9 @@ export class WsHandler {
 
             if (!ws.user && message.event !== "pusher:signin") {
                 return this.unauthorized(ws);
-            } else if (Utils.isClientEvent(message.event)) {
+            } 
+            
+            if (message.event.startsWith('client-')) {
                 this.handleClientEvent(ws, message);
             }
 
