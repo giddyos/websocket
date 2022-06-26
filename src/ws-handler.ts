@@ -207,6 +207,7 @@ export class WsHandler {
             }
 
         } else {
+            
            return this.unauthorized(ws);
         }
 
@@ -694,7 +695,7 @@ export class WsHandler {
             return;
         }
 
-        this.signinTokenIsValid(ws, message.data.user_data, message.data.auth).then(isValid => {
+        this.signinTokenIsValid(ws, message.data.user_data!, message.data.auth!).then(isValid => {
             if (!isValid) {
                 ws.sendJson({
                     event: 'pusher:error',
