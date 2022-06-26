@@ -176,6 +176,8 @@ export class WsHandler {
 
             if (!ws.user && message.event !== "pusher:signin") {
                 return this.unauthorized(ws);
+            } else if (Utils.isClientEvent(message.event)) {
+                this.handleClientEvent(ws, message);
             }
 
             switch (message.event) {
@@ -192,7 +194,9 @@ export class WsHandler {
                     break;
 
                 case "pusher:unsubscribe":
-                    this.unsubscribeFromChannel(ws, message.data.channel);
+                    if(message.data && message.data.channel) {
+                        this.unsubscribeFromChannel(ws, message.data.channel);
+                    }
                     break;
 
                 case "pusher:signin":
