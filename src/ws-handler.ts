@@ -686,7 +686,7 @@ export class WsHandler {
             return;
         }
 
-        if (message.data.user_data == null || message.data.auth == null) {
+        if (message.data == null) {
             ws.sendJson({
                 event: 'pusher:error',
                 data: {
