@@ -42,7 +42,7 @@ export class WebhookSender {
     /**
      * Batch of ClientEventData, to be sent as one webhook.
      */
-    public batch: ClientEventData[]  = [];
+    public batch: ClientEventData[] = [];
 
     /**
      * Whether current process has nominated batch handler.
@@ -203,6 +203,30 @@ export class WebhookSender {
     }
 
     /**
+    * Send a webhook for the client event.
+    */
+    public sendAuthCheck(app: App, event: string, data: any, socketId?: string, userId?: string) {
+        if (!app.hasClientEventWebhooks) {
+            return;
+        }
+
+        let formattedData: ClientEventData = {
+            name: App.CLIENT_EVENT_WEBHOOK,
+            channel: 'personal',
+            event,
+            data,
+        };
+
+        if (socketId) {
+            formattedData.socket_id = socketId;
+        }
+
+        formattedData.user_id = userId;
+
+        this.send(app, formattedData, 'client_auth_check');
+    }
+
+    /**
      * Send a member_added event.
      */
     public sendMemberAdded(app: App, channel: string, userId: string): void {
@@ -288,7 +312,7 @@ export class WebhookSender {
     /**
      * Send a webhook for the app with the given data, without batching.
      */
-    protected sendWebhook(app: App, data: ClientEventData|ClientEventData[], queueName: string): void {
+    protected sendWebhook(app: App, data: ClientEventData | ClientEventData[], queueName: string): void {
         let events = data instanceof Array ? data : [data];
 
         if (events.length === 0) {

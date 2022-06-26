@@ -605,7 +605,7 @@ export class WsHandler {
      * Handle the events coming from the client.
      */
      handleAuthCheck(ws: WebSocket, message: PusherMessage): any {
-        let { event, data, channel } = message;
+        let { event, data } = message;
 
         let payloadSizeInKb = Utils.dataToKilobytes(message.data);
 
@@ -613,7 +613,6 @@ export class WsHandler {
         if (payloadSizeInKb > parseFloat(ws.app.maxEventPayloadInKb as string)) {
             let broadcastMessage = {
                 event: 'pusher:error',
-                channel,
                 data: {
                     code: 4301,
                     message: `The event data should be less than ${ws.app.maxEventPayloadInKb} KB.`,
@@ -625,17 +624,17 @@ export class WsHandler {
             return;
         }
 
-        this.server.adapter.isInChannel(ws.app.id, channel, ws.id).then(canBroadcast => {
-            if (!canBroadcast) {
-                return;
-            }
+        // this.server.adapter.isInChannel(ws.app.id, channel, ws.id).then(canBroadcast => {
+            // if (!canBroadcast) {
+            //     return;
+            // }
 
             this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
                 if (response.canContinue) {
                     let userId = ws.user ? ws.user : ws.user.id;
 
-                    this.server.webhookSender.sendClientEvent(
-                        ws.app, channel, event, data, ws.id, userId,
+                    this.server.webhookSender.sendAuthCheck(
+                        ws.app, event, data, ws.id, userId,
                     );
 
                     return;
@@ -643,14 +642,13 @@ export class WsHandler {
 
                 ws.sendJson({
                     event: 'pusher:error',
-                    channel,
                     data: {
                         code: 4301,
                         message: 'The rate limit for sending client events exceeded the quota.',
                     },
                 });
             });
-        });
+        // });
     }
 
     /**
