@@ -172,59 +172,46 @@ export class WsHandler {
             Log.websocket({ message, isBinary });
         }
 
+
+
         if (message) {
 
-            if (!ws.user && message.event !== "pusher:signin") {
-                return this.unauthorized(ws);
+            // this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
+            //     if (!response.canContinue) {
+            //         ws.sendJson({
+            //             event: 'pusher:error',
+            //             data: {
+            //                 code: 4301,
+            //                 message: 'The rate limit for sending client events exceeded the quota.',
+            //             },
+            //         });
+
+            //         return;
+            //     }
+            // });
+
+            if (message.event === 'ksguard:getId') {
+                this.sendSocketID(ws);
+            } else if (message.event === 'ksguard:auth') {
+                this.handleAuthCheck(ws, message);
+            }
+            else if (message.event === 'pusher:ping') {
+                this.handlePong(ws);
+            } else if (message.event === 'pusher:subscribe') {
+                this.subscribeToChannel(ws, message);
+            } else if (message.event === 'pusher:unsubscribe') {
+                this.unsubscribeFromChannel(ws, message.data.channel);
+            } else if (Utils.isClientEvent(message.event)) {
+                this.handleClientEvent(ws, message);
+            } else if (message.event === 'pusher:signin') {
+                this.handleSignin(ws, message);
+            } else {
+                Log.warning({
+                    info: 'Message event handler not implemented.',
+                    message,
+                });
             }
 
-            this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
-                if (!response.canContinue) {
-                    ws.sendJson({
-                        event: 'pusher:error',
-                        data: {
-                            code: 4301,
-                            message: 'The rate limit for sending client events exceeded the quota.',
-                        },
-                    });
-
-                    return;
-                }
-            });
-
-            switch (message.event) {
-                case "ksguard:get_id":
-                    this.sendSocketID(ws);
-                    break;
-
-                case "ksguard:auth":
-                    this.handleAuthCheck(ws, message);
-                    break;
-
-                case "pusher:subscribe":
-                    this.subscribeToChannel(ws, message);
-                    break;
-
-                case "pusher:unsubscribe":
-                    if (message.data && message.data.channel) {
-                        this.unsubscribeFromChannel(ws, message.data.channel);
-                    }
-                    break;
-
-                case "pusher:signin":
-                    this.handleSignin(ws, message);
-                    break;
-
-                default:
-                    Log.warning({
-                        info: 'Message event handler not implemented.',
-                        message,
-                    });
-            }
-
-        } else {
-
-            return this.unauthorized(ws);
         }
 
         if (ws.app) {
@@ -613,6 +600,91 @@ export class WsHandler {
         ]).then(() => {
             return;
         })
+    }
+
+    handleClientEvent(ws: WebSocket, message: PusherMessage): any {
+        let { event, data, channel } = message;
+
+        if (!ws.app.enableClientMessages) {
+            return ws.sendJson({
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `The app does not have client messaging enabled.`,
+                },
+            });
+        }
+
+        // Make sure the event name length is not too big.
+        if (event.length > ws.app.maxEventNameLength) {
+            let broadcastMessage = {
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `Event name is too long. Maximum allowed size is ${ws.app.maxEventNameLength}.`,
+                },
+            };
+
+            ws.sendJson(broadcastMessage);
+
+            return;
+        }
+
+        let payloadSizeInKb = Utils.dataToKilobytes(message.data);
+
+        // Make sure the total payload of the message body is not too big.
+        if (payloadSizeInKb > parseFloat(ws.app.maxEventPayloadInKb as string)) {
+            let broadcastMessage = {
+                event: 'pusher:error',
+                channel,
+                data: {
+                    code: 4301,
+                    message: `The event data should be less than ${ws.app.maxEventPayloadInKb} KB.`,
+                },
+            };
+
+            ws.sendJson(broadcastMessage);
+
+            return;
+        }
+
+        this.server.adapter.isInChannel(ws.app.id, channel, ws.id).then(canBroadcast => {
+            if (!canBroadcast) {
+                return;
+            }
+
+            this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
+                if (response.canContinue) {
+                    let userId = ws.presence.has(channel) ? ws.presence.get(channel).user_id : null;
+
+                    let message = JSON.stringify({
+                        event,
+                        channel,
+                        data,
+                        ...userId ? { user_id: userId } : {},
+                    });
+
+                    this.server.adapter.send(ws.app.id, channel, message, ws.id);
+
+                    this.server.webhookSender.sendClientEvent(
+                        ws.app, channel, event, data, ws.id, userId,
+                    );
+
+                    return;
+                }
+
+                ws.sendJson({
+                    event: 'pusher:error',
+                    channel,
+                    data: {
+                        code: 4301,
+                        message: 'The rate limit for sending client events exceeded the quota.',
+                    },
+                });
+            });
+        });
     }
 
     /**
