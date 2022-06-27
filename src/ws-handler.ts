@@ -178,6 +178,20 @@ export class WsHandler {
                 return this.unauthorized(ws);
             }
 
+            this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
+                if (!response.canContinue) {
+                    ws.sendJson({
+                        event: 'pusher:error',
+                        data: {
+                            code: 4301,
+                            message: 'The rate limit for sending client events exceeded the quota.',
+                        },
+                    });
+
+                    return;
+                }
+            });
+
             switch (message.event) {
                 case "ksguard:get_id":
                     this.sendSocketID(ws);
@@ -604,7 +618,7 @@ export class WsHandler {
     /**
      * Handle the events coming from the client.
      */
-     handleAuthCheck(ws: WebSocket, message: PusherMessage): any {
+    handleAuthCheck(ws: WebSocket, message: PusherMessage): any {
         let { event, data } = message;
 
         let payloadSizeInKb = Utils.dataToKilobytes(message.data);
@@ -624,31 +638,13 @@ export class WsHandler {
             return;
         }
 
-        // this.server.adapter.isInChannel(ws.app.id, channel, ws.id).then(canBroadcast => {
-            // if (!canBroadcast) {
-            //     return;
-            // }
+        let userId = ws.user ? ws.user : ws.user.id;
 
-            this.server.rateLimiter.consumeFrontendEventPoints(1, ws.app, ws).then(response => {
-                if (response.canContinue) {
-                    let userId = ws.user ? ws.user : ws.user.id;
+        this.server.webhookSender.sendAuthCheck(
+            ws.app, event, data, ws.id, userId,
+        );
 
-                    this.server.webhookSender.sendAuthCheck(
-                        ws.app, event, data, ws.id, userId,
-                    );
-
-                    return;
-                }
-
-                ws.sendJson({
-                    event: 'pusher:error',
-                    data: {
-                        code: 4301,
-                        message: 'The rate limit for sending client events exceeded the quota.',
-                    },
-                });
-            });
-        // });
+        return;
     }
 
     /**
