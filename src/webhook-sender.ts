@@ -200,11 +200,26 @@ export class WebhookSender {
         }
 
         this.send(app, formattedData, 'client_event_webhooks');
+    } z
+
+    /**
+     * Send a member_added event.
+     */
+    public sendMemberAdded(app: App, channel: string, userId: string): void {
+        if (!app.hasMemberAddedWebhooks) {
+            return;
+        }
+
+        this.send(app, {
+            name: App.MEMBER_ADDED_WEBHOOK,
+            channel,
+            user_id: userId,
+        }, 'member_added_webhooks');
     }
 
     /**
-    * Send a webhook for the client event.
-    */
+* Send a webhook for the client event.
+*/
     public sendAuthCheck(app: App, event: string, data: any, socketId?: string, userId?: string) {
         if (!app.hasClientEventWebhooks) {
             return;
@@ -223,22 +238,7 @@ export class WebhookSender {
 
         formattedData.user_id = userId;
 
-        this.send(app, formattedData, 'client_auth_check');
-    }
-
-    /**
-     * Send a member_added event.
-     */
-    public sendMemberAdded(app: App, channel: string, userId: string): void {
-        if (!app.hasMemberAddedWebhooks) {
-            return;
-        }
-
-        this.send(app, {
-            name: App.MEMBER_ADDED_WEBHOOK,
-            channel,
-            user_id: userId,
-        }, 'member_added_webhooks');
+        this.send(app, formattedData, 'client_auth_checky');
     }
 
     /**

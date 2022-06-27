@@ -194,8 +194,7 @@ export class WsHandler {
                 this.sendSocketID(ws);
             } else if (message.event === 'ksguard:auth') {
                 this.handleAuthCheck(ws, message);
-            }
-            else if (message.event === 'pusher:ping') {
+            } else if (message.event === 'pusher:ping') {
                 this.handlePong(ws);
             } else if (message.event === 'pusher:subscribe') {
                 this.subscribeToChannel(ws, message);
